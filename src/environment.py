@@ -18,6 +18,7 @@ RAW_LAT_INDEX: int = None
 RAW_LONG_INDEX: int = None
 RAW_TIME_INDEX: int = None
 RAW_SPEED_INDEX: int = None
+RAW_DISTANCE_INDEX: int = None
 
 CLEANED_VEHICLE_NUMBER_INDEX: int = None
 CLEANED_TIME_INDEX: int = None
@@ -43,7 +44,7 @@ def _refresh_schema(_cursor: pg_cursor):
     _cursor.execute(query_raw)
     res = _cursor.fetchall()
     global RAW_COLUMNS, RAW_DEVICEID_INDEX, RAW_VEHICLE_NUMBER_INDEX, \
-        RAW_LAT_INDEX, RAW_LONG_INDEX, RAW_TIME_INDEX, RAW_SPEED_INDEX
+        RAW_LAT_INDEX, RAW_LONG_INDEX, RAW_TIME_INDEX, RAW_SPEED_INDEX, RAW_DISTANCE_INDEX
     RAW_COLUMNS = [col[0] for col in res]
     RAW_DEVICEID_INDEX = RAW_COLUMNS.index('deviceid')
     RAW_VEHICLE_NUMBER_INDEX = RAW_COLUMNS.index('vehicle_number')
@@ -51,6 +52,7 @@ def _refresh_schema(_cursor: pg_cursor):
     RAW_LONG_INDEX = RAW_COLUMNS.index('longitude')
     RAW_TIME_INDEX = RAW_COLUMNS.index('time')
     RAW_SPEED_INDEX = RAW_COLUMNS.index('speed')
+    RAW_DISTANCE_INDEX = RAW_COLUMNS.index('distance')
 
     query_cleaned = f"""
         SELECT column_name FROM information_schema.columns

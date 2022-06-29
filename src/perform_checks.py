@@ -1,7 +1,7 @@
 from geopy import distance
 from typing import Tuple, List, Any
 from datetime import timedelta
-from environment import RAW_LAT_INDEX, RAW_LONG_INDEX, RAW_TIME_INDEX, RAW_SPEED_INDEX
+from environment import RAW_LAT_INDEX, RAW_LONG_INDEX, RAW_TIME_INDEX, RAW_SPEED_INDEX, RAW_DISTANCE_INDEX
 from core import *
 
 MIN_LAT = 8.20  # Minimum Latitude in India is 8.4
@@ -39,7 +39,7 @@ def check_india(lat: float, long: float) -> bool:
     :rtype: bool
     """
 
-    return MIN_LAT < lat < MAX_LAT and MIN_LONG < long < MAX_LONG
+    return MIN_LAT < float(lat) < MAX_LAT and MIN_LONG < float(long) < MAX_LONG
 
 
 def calc_speed(lat_new: float, long_new: float, lat_old: float, long_old: float,
@@ -88,6 +88,10 @@ def check_all(_record: List[Any], prev: VehicleStatus) -> None:
     if prev is not None:
         if prev.time - _record[RAW_TIME_INDEX] > timedelta(minutes=1):
             raise PrevTooOld("The Previous Record is more than 1 minute old")
+
+        # Updating the Distance of the Record
+        _record[RAW_DISTANCE_INDEX] = calc_dist((_record[RAW_LAT_INDEX], _record[RAW_LONG_INDEX]),
+                                                (prev.lat, prev.long))
     else:
         raise PrevNotFound("Previous Record Not Found")
 

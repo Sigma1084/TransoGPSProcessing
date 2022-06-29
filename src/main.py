@@ -56,11 +56,20 @@ def insert_into_cleaned(_record: List[Any], _cursor: pg_cursor):
     for i in range(len(CLEANED_COLUMNS)):
         new_record.append(_record[NEW_FROM_OLD[i]])
 
+    new_record_str = ""
+    for item in new_record:
+        if type(item) == str:
+            new_record_str += "'" + item + "'"
+        elif type(item) == datetime.datetime:
+            new_record_str += "'" + str(item) + "'"
+        else:
+            new_record_str += str(item)
+
     _query = f"""
-        INSERT INTO {CLEANED_TABLE_NAME} 
-        ({','.join(CLEANED_COLUMNS)}) 
-        VALUES 
-        ({','.join(new_record)});
+        INSERT INTO {CLEANED_TABLE_NAME}
+        ({','.join(CLEANED_COLUMNS)})
+        VALUES
+        ({new_record_str});
     """
     _cursor.execute(_query)
 
@@ -81,7 +90,7 @@ def insert_and_update(_record: List[Any], _cursor: pg_cursor):
     # Updating the vehicle_status of the current vehicle
     vehicle_statuses[_record[RAW_DEVICEID_INDEX]] = VehicleStatus(
         _record[RAW_DEVICEID_INDEX], _record[RAW_VEHICLE_NUMBER_INDEX],
-        _record[RAW_LAT_INDEX], _record[RAW_LONG_INDEX], _record[RAW_SPEED_INDEX]
+        _record[RAW_LAT_INDEX], _record[RAW_LONG_INDEX], _record[RAW_TIME_INDEX]
     )
 
     # Update the vehicles_changed
@@ -105,6 +114,7 @@ def process_record(_record: List[Any], _cursor: pg_cursor):
         # If batch Processing is completely taken down, Stream Here
         # client.publish()
 
+    # Handle Check Exception here
     except CheckException as ch_err:
         # Ignored
         logging.log(2, ch_err)
@@ -138,6 +148,8 @@ def main():
                         print("Ending the Hourly Refresh\n\n")
 
                     print(f"Starting Execution of Batch {batch_index}")
+
+                    # Fetching all the new data
                     query = f"""
                             SELECT * FROM {RAW_TABLE_NAME}
                             WHERE time::timestamp > '{str(last_processed_time_stamp)}'
@@ -157,7 +169,9 @@ def main():
                     for entry in device_id_triggers[deviceid]:
                         env, company_id, vehicle_id = entry
                         client.publish(f'{env}/gps/{company_id}/{vehicle_id}',
-                                       json.dumps(vehicle_statuses[deviceid]))
+                                       f"vehicle:{vehicle_id},"
+                                       f"lat:{vehicle_statuses[deviceid].lat}," +
+                                       f"long:{vehicle_statuses[deviceid].long}")
                 except KeyError:
                     continue
             client.disconnect()
@@ -175,6 +189,7 @@ def main():
             print(e)
             logging.log(2, e)
 
+        # MQTT Error
         except ConnectionRefusedError as e:
             print(f"MQTT Connection Refused at batch {batch_index}")
             logging.log(2, e)
