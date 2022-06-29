@@ -1,7 +1,7 @@
 # Ideally Stored in an Environment Variable
-POSTGRES_DBNAME = "test_db"
-POSTGRES_USER = "postgres"
-POSTGRES_PASSWORD = "postgres"
+POSTGRES_DBNAME = "shreeji"
+POSTGRES_USER = "ezyloads"
+POSTGRES_PASSWORD = "ezy@1234"
 POSTGRES_HOST = "localhost"
 
 # POSTGRES_CONNECTION_DETAILS = f"dbname={POSTGRES_DBNAME} user={POSTGRES_USER} " + \

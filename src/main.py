@@ -54,16 +54,25 @@ def insert_into_cleaned(_record: List[Any], _cursor: pg_cursor):
 
     new_record = list()
     for i in range(len(CLEANED_COLUMNS)):
+        item = _record[NEW_FROM_OLD[i]]
+        new_record.append(item)
+
+        new_record = list()
+    for i in range(len(CLEANED_COLUMNS)):
         new_record.append(_record[NEW_FROM_OLD[i]])
 
     new_record_str = ""
     for item in new_record:
-        if type(item) == str:
-            new_record_str += "'" + item + "'"
+        if item == None:
+            new_record_str += "null, "
+        elif type(item) == str:
+            new_record_str += "'" + item + "', "
+            new_record_str += "'" + str(item) + "', "
         elif type(item) == datetime.datetime:
-            new_record_str += "'" + str(item) + "'"
         else:
-            new_record_str += str(item)
+            new_record_str += str(item) + ", "
+
+    new_record_str = new_record_str[:-2]
 
     _query = f"""
         INSERT INTO {CLEANED_TABLE_NAME}
