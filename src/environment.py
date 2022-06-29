@@ -3,10 +3,10 @@ import psycopg2
 from psycopg2.extensions import cursor as pg_cursor
 import datetime
 import requests
+from json.decoder import JSONDecodeError
 
-from gps_data_cleaning_version3 import VehicleStatus
-from postgres_connect import POSTGRES_CONNECTION_DETAILS, RAW_TABLE_NAME, CLEANED_TABLE_NAME
-from Errors import *
+from core import *
+from connections import POSTGRES_CONNECTION_DETAILS, RAW_TABLE_NAME, CLEANED_TABLE_NAME
 
 RAW_COLUMNS: List[str] = None
 CLEANED_COLUMNS: List[str] = None
@@ -123,8 +123,7 @@ def get_last_processed_time_stamp_from_cleaned(_cursor: pg_cursor) -> datetime.t
         print("Successfully fetched last processed date time")
     except Exception:
         last_processed_time_stamp = datetime.datetime.now() - datetime.timedelta(days=1)
-        print("Error while fetching last processed time stamp, returning to 1 days ago")
-        raise RefreshError("Error While Refreshing Last Processed Time Stamp")
+        print("Last processed time stamp could not be fetched, returning to 1 days ago")
     finally:
         print("Finished fetching last processed time stamp")
         return last_processed_time_stamp
@@ -148,26 +147,27 @@ def refresh_device_id_triggers(device_id_triggers) -> Dict[str, List[Tuple[str, 
         'app': "https://app.transo.in/vehicleMap"
     }
 
-    for _env, _url in urls:
+    for _env, _url in urls.items():
         try:
             data: List[Dict[str, Any]] = requests.get(_url).json()['data']
             for _entry in data:
-                device_id_triggers[_entry['device_id']].append(
-                    (_env, _entry['company_id'], _entry['vehicle_id'])
-                )
-            print(f"Successful Loading {_env} Vehicle-Company Mapping")
+                try:
+                    device_id_triggers[_entry['device_id']].append(
+                        (_env, _entry['company_id'], _entry['vehicle_id'])
+                    )
+                except:
+                    device_id_triggers[_entry['device_id']] = [
+                        (_env, _entry['company_id'], _entry['vehicle_id'])
+                    ]
+            print(f"Successful Loaded {_env} Vehicle-Company Mapping")
         except requests.HTTPError as _e:
             print(f"HTTP Error during {_env} Vehicle-Company Mapping")
             raise requests.HTTPError(_e)
-        except requests.JSONDecodeError as _e:
+        except JSONDecodeError as _e:
             print(f"Unsuccessful JSON Decoding while Loading {_env} Vehicle-Company Mapping")
-            raise requests.JSONDecodeError(_e)
-        except Exception as _e:
-            raise RefreshError("Error While Refreshing device_id triggers")
-        finally:
-            print(f"Finished Loading {_env} Vehicle-Company Mapping")
+            raise _e
 
 
-with psycopg2.connect(**POSTGRES_CONNECTION_DETAILS) as con:
-    with con.cursor() as cur:
-        _refresh_schema(cur)
+with psycopg2.connect(**POSTGRES_CONNECTION_DETAILS) as _con:
+    with _con.cursor() as _cur:
+        _refresh_schema(_cur)

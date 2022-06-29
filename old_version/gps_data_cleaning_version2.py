@@ -72,8 +72,8 @@ while(True):
 		
 
 		last_record = """select distinct on (deviceid) deviceid, time::timestamp, latitude,longitude,speed
-		from shreeji_cleaned
-		order by deviceid, time::timestamp desc;"""#.format(yesterday)
+		from shreeji_cleaned_test
+		order by deviceid, time::timestamp desc;"""  #.format(yesterday)
 
 		cur1.execute(last_record)
 		#print(last_record)
@@ -199,24 +199,24 @@ while(True):
 			print("duplicated:\n",tmp_gps_data[tmp_gps_data.duplicated(['deviceid','time'])])
 			for i in tmp_gps_data.index:
 				print(tmp_gps_data.loc[i,'deviceid'],tmp_gps_data.loc[i,'time'])
-				query_to_insert = """insert into shreeji_cleaned(travel_time,speed,vendor_name,vehicle_number,imei,ignition_status,location,latitude,longitude,angle,altitude,distance,fuel,status_id,status,time,deviceId) values('{}','{}','{}','{}','{}','{}','{}','{}','{}','{}','{}','{}','{}','{}','{}','{}','{}') 
-				 on conflict (deviceid,time) do nothing """.format( tmp_gps_data.loc[i,'travel_time'],
-														tmp_gps_data.loc[i,'speed'],
-														tmp_gps_data.loc[i,'vendor_name'],
-														tmp_gps_data.loc[i,'vehicle_number'],
-														tmp_gps_data.loc[i,'imei'],
-														tmp_gps_data.loc[i,'ignition_status'],
-														tmp_gps_data.loc[i,'location'],
-														tmp_gps_data.loc[i,'latitude'],
-														tmp_gps_data.loc[i,'longitude'],
-														tmp_gps_data.loc[i,'angle'],
-														tmp_gps_data.loc[i,'altitude'],
-														tmp_gps_data.loc[i,'distance'],
-														tmp_gps_data.loc[i,'fuel'],
-														tmp_gps_data.loc[i,'status_id'],
-														tmp_gps_data.loc[i,'status'],
-														tmp_gps_data.loc[i,'time'],
-														tmp_gps_data.loc[i,'deviceid'])
+				query_to_insert = """insert into shreeji_cleaned_test(travel_time,speed,vendor_name,vehicle_number,imei,ignition_status,location,latitude,longitude,angle,altitude,distance,fuel,status_id,status,time,deviceId) values('{}','{}','{}','{}','{}','{}','{}','{}','{}','{}','{}','{}','{}','{}','{}','{}','{}') 
+				 on conflict (deviceid,time) do nothing """.format(tmp_gps_data.loc[i, 'travel_time'],
+																   tmp_gps_data.loc[i,'speed'],
+																   tmp_gps_data.loc[i,'vendor_name'],
+																   tmp_gps_data.loc[i,'vehicle_number'],
+																   tmp_gps_data.loc[i,'imei'],
+																   tmp_gps_data.loc[i,'ignition_status'],
+																   tmp_gps_data.loc[i,'location'],
+																   tmp_gps_data.loc[i,'latitude'],
+																   tmp_gps_data.loc[i,'longitude'],
+																   tmp_gps_data.loc[i,'angle'],
+																   tmp_gps_data.loc[i,'altitude'],
+																   tmp_gps_data.loc[i,'distance'],
+																   tmp_gps_data.loc[i,'fuel'],
+																   tmp_gps_data.loc[i,'status_id'],
+																   tmp_gps_data.loc[i,'status'],
+																   tmp_gps_data.loc[i,'time'],
+																   tmp_gps_data.loc[i,'deviceid'])
 				print(query_to_insert)
 				cur1.execute(query_to_insert)
 				conn1.commit()

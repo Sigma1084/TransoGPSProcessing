@@ -1,40 +1,39 @@
 import json
 import time
 import logging
+import datetime
+from typing import Set, Dict, List, Tuple, Any
+import psycopg2
+from psycopg2.extensions import cursor as pg_cursor
 
-from Environment import *
-from postgres_connect import POSTGRES_CONNECTION_DETAILS, RAW_TABLE_NAME, CLEANED_TABLE_NAME
-from Errors import *
+from src.core.classes import *
+from src.core.errors import *
+
+from src.environment import CLEANED_COLUMNS, NEW_FROM_OLD, RAW_DEVICEID_INDEX, \
+    RAW_VEHICLE_NUMBER_INDEX, RAW_LONG_INDEX, RAW_LAT_INDEX, RAW_TIME_INDEX, RAW_SPEED_INDEX, \
+    refresh_vehicle_statuses, refresh_device_id_triggers, get_last_processed_time_stamp_from_cleaned
+
 from perform_checks import check_all
-from mqtt_connect import client, MQTT_CONNECTION_DETAILS
+from src.connections.postgres_connect import POSTGRES_CONNECTION_DETAILS, RAW_TABLE_NAME, CLEANED_TABLE_NAME
+from src.connections.mqtt_connect import client, MQTT_CONNECTION_DETAILS
 
 
 # Logging Configuration
 logging.basicConfig(
     # filename='/home/azureuser/python_files/webscraping/gps_data_cleaning_log.log',
-    filename='./gps_log.log',
+    filename='../gps_log.log',
     level=logging.INFO,
     format='%(asctime)s:%(funcName)s:%(levelname)s:%(message)s'
 )
 
-BATCH_INTERVAL = 300  # Seconds
-
-
-class VehicleStatus:
-    def __init__(self, device_id: str, vehicle_number: str, latitude: float,
-                 longitude: float, last_time: datetime.datetime):
-        self.device_id = device_id
-        self.vehicle_number = vehicle_number
-        self.lat = latitude
-        self.long = longitude
-        self.time = last_time
+BATCH_INTERVAL = 10  # Seconds
 
 
 # All the required info about the vehicle whereabouts primary
 vehicle_statuses: Dict[str, VehicleStatus] = dict()
 
 # For Event Streaming
-vehicles_changed: Dict[str, VehicleStatus] = dict()
+vehicles_changed: Set[str] = set()
 
 # Time of the latest processed field
 last_processed_time_stamp: datetime.datetime = None
@@ -89,7 +88,7 @@ def insert_and_update(_record: List[Any], _cursor: pg_cursor):
     )
 
     # Update the vehicles_changed
-    vehicles_changed[RAW_DEVICEID_INDEX] = vehicle_statuses[_record[RAW_DEVICEID_INDEX]]
+    vehicles_changed.add(_record[RAW_DEVICEID_INDEX])
 
 
 def process_record(_record: List[Any], _cursor: pg_cursor):
@@ -127,21 +126,23 @@ if __name__ == '__main__':
     batch_index = 0
 
     while True:
-        print(f"Starting Execution of Batch {batch_index}")
         start = time.time()
+        proceed = True
         try:
             # Processing, inserting to Postgres
             with psycopg2.connect(**POSTGRES_CONNECTION_DETAILS) as con:
                 with con.cursor() as cur:
                     if batch_index % 12 == 0:  # Every 1 hour
-                        global last_processed_time_stamp
+                        print("Starting the Hourly Refresh")
                         refresh_vehicle_statuses(vehicle_statuses, cur)
                         last_processed_time_stamp = get_last_processed_time_stamp_from_cleaned(cur)
                         refresh_device_id_triggers(device_id_triggers)
+                        print("Ending the Hourly Refresh\n\n")
 
+                    print(f"Starting Execution of Batch {batch_index}")
                     query = f"""
                         SELECT * FROM {RAW_TABLE_NAME}
-                        WHERE time::timestamp > {str(last_processed_time_stamp)}
+                        WHERE time::timestamp > '{str(last_processed_time_stamp)}'
                         ORDER BY time::timestamp;
                     """
                     cur.execute(query)
@@ -149,40 +150,48 @@ if __name__ == '__main__':
                         process_record(record, cur)
 
             print(f"Batch {batch_index} postgres insertion successful after " +
-                  f"{datetime.datetime.now()-start}")
+                  f"{time.time() - start}")
 
             # Streaming Using MQTT
             with client.connect(**MQTT_CONNECTION_DETAILS):
-                for deviceid, status in vehicles_changed:
+                for deviceid in vehicles_changed:
                     try:
                         for entry in device_id_triggers[deviceid]:
                             env, company_id, vehicle_id = entry
-                            client.publish(f'{env}/gps/{company_id}/{vehicle_id}', json.dumps(status))
+                            client.publish(f'{env}/gps/{company_id}/{vehicle_id}',
+                                           json.dumps(vehicle_statuses[deviceid]))
                     except KeyError:
                         continue
             
             print(f"Batch {batch_index} MQTT Streaming successful")
 
         except RefreshError as e:
-            print(f"Error While Refreshing some parameter")
+            print(f"Error While Refreshing some parameter in Batch {batch_index}")
             logging.log(2, e)
+            proceed = False
             continue
 
         except psycopg2.Error as e:
-            print(f"Postgres Error Executing {batch_index}")
+            print(f"Postgres Error Executing Batch {batch_index}")
             print(e)
             logging.log(2, e)
-            continue
+
+        except ConnectionRefusedError as e:
+            print(f"MQTT Connection Refused at batch {batch_index}")
+            logging.log(2, e)
 
         except Exception as e:
-            print(f"Error Executing {batch_index}")
+            print(f"Unexpected Error Executing Batch {batch_index}")
             print(e)
             logging.log(2, e)
+            raise e
 
         finally:
             end = time.time()
             print(f"Batch {batch_index} finished execution after {end-start}")
             logging.log(1, f"Batch {batch_index} finished execution after {end-start}")
-            vehicles_changed = dict()
-            batch_index += 1
+            vehicles_changed = set()
+            if proceed:
+                batch_index += 1
+            print()
             time.sleep(BATCH_INTERVAL)

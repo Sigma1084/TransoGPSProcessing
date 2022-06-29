@@ -1,8 +1,8 @@
 from geopy import distance
 from typing import Tuple, List, Any
 from datetime import timedelta
-from Environment import *
-from Errors import *
+from environment import RAW_LAT_INDEX, RAW_LONG_INDEX, RAW_TIME_INDEX, RAW_SPEED_INDEX
+from core import *
 
 MIN_LAT = 8.20  # Minimum Latitude in India is 8.4
 MAX_LAT = 37.8  # Maximum Latitude of India is 37.6
@@ -86,7 +86,7 @@ def check_all(_record: List[Any], prev: VehicleStatus) -> None:
         raise CheckException("Vehicle Not Present in India")
 
     if prev is not None:
-        if prev.time - _record[RAW_TIME_INDEX] > datetime.timedelta(minutes=1):
+        if prev.time - _record[RAW_TIME_INDEX] > timedelta(minutes=1):
             raise PrevTooOld("The Previous Record is more than 1 minute old")
     else:
         raise PrevNotFound("Previous Record Not Found")

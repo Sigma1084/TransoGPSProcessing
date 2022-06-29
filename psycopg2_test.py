@@ -1,33 +1,11 @@
-import datetime
-
 import psycopg2
 
-
-POSTGRES_DETAILS = {
-    'dbname': 'test_db',
-    'user': 'postgres',
-    'password': 'postgres',
-    'host': 'localhost',
-}
-
-MQTT_CONNECTION_DETAILS = {
-    'host': 'localhost',
-    'port': 5021
-}
-
-POSTGRES_DBNAME = "test_db"
-POSTGRES_USER = "postgres"
-POSTGRES_PASSWORD = "postgres"
-POSTGRES_HOST = "localhost"
-
-POSTGRES_CONNECTION_DETAILS = f"dbname={POSTGRES_DBNAME} user={POSTGRES_USER} " + \
-                              f"password={POSTGRES_PASSWORD} host={POSTGRES_HOST}"
+from src.connections import POSTGRES_CONNECTION_DETAILS
 
 RAW_TABLE_NAME = "shreeji"
 CLEANED_TABLE_NAME = "shreeji_cleaned"
 
-
-with psycopg2.connect(**POSTGRES_DETAILS) as connection:
+with psycopg2.connect(**POSTGRES_CONNECTION_DETAILS) as connection:
     with connection.cursor() as cursor:
         # cursor.execute(f"""
         #     SELECT * FROM test_table
