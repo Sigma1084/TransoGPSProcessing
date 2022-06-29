@@ -1,0 +1,19 @@
+# Docker Compose file to start and run mosquitto
+
+version: '3'
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    hostname: mosquitto
+    network_mode: "host"
+    expose:
+      - "5021"
+      - "5022"
+    ports:
+      - "5021:5021"
+      - "5022:5022"
+    volumes:
+      - ./docker/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./docker/mosquitto/data:/mosquitto/data
+      - ./docker/mosquitto/log:/mosquitto/log
