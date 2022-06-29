@@ -39,7 +39,7 @@ def check_india(lat: float, long: float) -> bool:
     :rtype: bool
     """
 
-    return MIN_LAT < lat < MAX_LAT and MIN_LONG < long < MAX_LONG
+    return MIN_LAT < float(lat) < MAX_LAT and MIN_LONG < float(long) < MAX_LONG
 
 
 def calc_speed(lat_new: float, long_new: float, lat_old: float, long_old: float,

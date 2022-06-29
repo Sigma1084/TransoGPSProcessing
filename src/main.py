@@ -54,13 +54,31 @@ def insert_into_cleaned(_record: List[Any], _cursor: pg_cursor):
 
     new_record = list()
     for i in range(len(CLEANED_COLUMNS)):
+        item = _record[NEW_FROM_OLD[i]]
+        new_record.append(item)
+
+        new_record = list()
+    for i in range(len(CLEANED_COLUMNS)):
         new_record.append(_record[NEW_FROM_OLD[i]])
 
+    new_record_str = ""
+    for item in new_record:
+        if item == None:
+            new_record_str += "null, "
+        elif type(item) == str:
+            new_record_str += "'" + item + "', "
+        elif type(item) == datetime.datetime:
+            new_record_str += "'" + str(item) + "', "
+        else:
+            new_record_str += str(item) + ", "
+
+    new_record_str = new_record_str[:-2]
+
     _query = f"""
-        INSERT INTO {CLEANED_TABLE_NAME} 
-        ({','.join(CLEANED_COLUMNS)}) 
-        VALUES 
-        ({','.join(new_record)});
+        INSERT INTO {CLEANED_TABLE_NAME}
+        ({','.join(CLEANED_COLUMNS)})
+        VALUES
+        ({new_record_str});
     """
     _cursor.execute(_query)
 
@@ -81,7 +99,7 @@ def insert_and_update(_record: List[Any], _cursor: pg_cursor):
     # Updating the vehicle_status of the current vehicle
     vehicle_statuses[_record[RAW_DEVICEID_INDEX]] = VehicleStatus(
         _record[RAW_DEVICEID_INDEX], _record[RAW_VEHICLE_NUMBER_INDEX],
-        _record[RAW_LAT_INDEX], _record[RAW_LONG_INDEX], _record[RAW_SPEED_INDEX]
+        _record[RAW_LAT_INDEX], _record[RAW_LONG_INDEX], _record[RAW_TIME_INDEX]
     )
 
     # Update the vehicles_changed
@@ -157,7 +175,9 @@ def main():
                     for entry in device_id_triggers[deviceid]:
                         env, company_id, vehicle_id = entry
                         client.publish(f'{env}/gps/{company_id}/{vehicle_id}',
-                                       json.dumps(vehicle_statuses[deviceid]))
+                                       f"vehicle:{vehicle_id},"
+                                       f"lat:{vehicle_statuses[deviceid].lat}," +
+                                       f"long:{vehicle_statuses[deviceid].long}")
                 except KeyError:
                     continue
             client.disconnect()
