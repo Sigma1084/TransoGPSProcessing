@@ -1,4 +1,3 @@
-import json
 import time
 import logging
 import datetime
@@ -9,7 +8,7 @@ from psycopg2.extensions import cursor as pg_cursor
 from core import *
 
 from environment import CLEANED_COLUMNS, NEW_FROM_OLD, RAW_DEVICEID_INDEX, \
-    RAW_VEHICLE_NUMBER_INDEX, RAW_LONG_INDEX, RAW_LAT_INDEX, RAW_TIME_INDEX, RAW_SPEED_INDEX, \
+    RAW_VEHICLE_NUMBER_INDEX, RAW_LONG_INDEX, RAW_LAT_INDEX, RAW_TIME_INDEX, \
     refresh_vehicle_statuses, refresh_device_id_triggers, get_last_processed_time_stamp_from_cleaned
 
 from perform_checks import check_all
@@ -63,12 +62,12 @@ def insert_into_cleaned(_record: List[Any], _cursor: pg_cursor):
 
     new_record_str = ""
     for item in new_record:
-        if item == None:
+        if item is None:
             new_record_str += "null, "
         elif type(item) == str:
             new_record_str += "'" + item + "', "
-            new_record_str += "'" + str(item) + "', "
         elif type(item) == datetime.datetime:
+            new_record_str += "'" + str(item) + "', "
         else:
             new_record_str += str(item) + ", "
 
