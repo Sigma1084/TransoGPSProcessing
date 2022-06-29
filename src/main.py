@@ -159,6 +159,7 @@ def postgres_reconnect():
 def main():
     batch_index = 0
     _con, _cur = postgres_reconnect()
+    num_records = [0]
 
     while True:
         start = time.time()
@@ -182,9 +183,9 @@ def main():
                     ORDER BY time::timestamp;
                 """
             _cur.execute(query)
-            num_records = 0
+            num_records[0] = 0
             for record in _cur.fetchall():
-                num_records += 1
+                num_records[0] += 1
                 process_record(record, _cur)
 
             print(f"Batch {batch_index} postgres insertion successful after " +
@@ -243,8 +244,8 @@ def main():
 
         finally:
             end = time.time()
-            print(f"Batch {batch_index} finished execution after {end - start}")
-            logging.log(1, f"Batch {batch_index} finished execution after {end - start}")
+            print(f"Batch {batch_index} finished execution after {end - start} processed {num_records[0]} records")
+            logging.log(1, f"Batch {batch_index} finished execution after {end - start} processed {num_records[0]} records")
             vehicles_changed.clear()
             if proceed:
                 batch_index += 1
