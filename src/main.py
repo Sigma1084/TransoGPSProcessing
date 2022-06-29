@@ -122,7 +122,7 @@ def process_record(_record: List[Any], _cursor: pg_cursor):
         last_processed_time_stamp = _record[RAW_TIME_INDEX]
 
 
-if __name__ == '__main__':
+def main():
     batch_index = 0
 
     while True:
@@ -135,16 +135,17 @@ if __name__ == '__main__':
                     if batch_index % 12 == 0:  # Every 1 hour
                         print("Starting the Hourly Refresh")
                         refresh_vehicle_statuses(vehicle_statuses, cur)
+                        global last_processed_time_stamp
                         last_processed_time_stamp = get_last_processed_time_stamp_from_cleaned(cur)
                         refresh_device_id_triggers(device_id_triggers)
                         print("Ending the Hourly Refresh\n\n")
 
                     print(f"Starting Execution of Batch {batch_index}")
                     query = f"""
-                        SELECT * FROM {RAW_TABLE_NAME}
-                        WHERE time::timestamp > '{str(last_processed_time_stamp)}'
-                        ORDER BY time::timestamp;
-                    """
+                            SELECT * FROM {RAW_TABLE_NAME}
+                            WHERE time::timestamp > '{str(last_processed_time_stamp)}'
+                            ORDER BY time::timestamp;
+                        """
                     cur.execute(query)
                     for record in cur.fetchall():
                         process_record(record, cur)
@@ -162,7 +163,7 @@ if __name__ == '__main__':
                                            json.dumps(vehicle_statuses[deviceid]))
                     except KeyError:
                         continue
-            
+
             print(f"Batch {batch_index} MQTT Streaming successful")
 
         except RefreshError as e:
@@ -188,10 +189,14 @@ if __name__ == '__main__':
 
         finally:
             end = time.time()
-            print(f"Batch {batch_index} finished execution after {end-start}")
-            logging.log(1, f"Batch {batch_index} finished execution after {end-start}")
-            vehicles_changed = set()
+            print(f"Batch {batch_index} finished execution after {end - start}")
+            logging.log(1, f"Batch {batch_index} finished execution after {end - start}")
+            vehicles_changed.clear()
             if proceed:
                 batch_index += 1
             print()
             time.sleep(BATCH_INTERVAL)
+
+
+if __name__ == '__main__':
+    main()
