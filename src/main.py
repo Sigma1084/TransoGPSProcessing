@@ -6,17 +6,14 @@ from typing import Set, Dict, List, Tuple, Any
 import psycopg2
 from psycopg2.extensions import cursor as pg_cursor
 
-from src.core.classes import *
-from src.core.errors import *
+from core import *
 
-from src.environment import CLEANED_COLUMNS, NEW_FROM_OLD, RAW_DEVICEID_INDEX, \
+from environment import CLEANED_COLUMNS, NEW_FROM_OLD, RAW_DEVICEID_INDEX, \
     RAW_VEHICLE_NUMBER_INDEX, RAW_LONG_INDEX, RAW_LAT_INDEX, RAW_TIME_INDEX, RAW_SPEED_INDEX, \
     refresh_vehicle_statuses, refresh_device_id_triggers, get_last_processed_time_stamp_from_cleaned
 
 from perform_checks import check_all
-from src.connections.postgres_connect import POSTGRES_CONNECTION_DETAILS, RAW_TABLE_NAME, CLEANED_TABLE_NAME
-from src.connections.mqtt_connect import client, MQTT_CONNECTION_DETAILS
-
+from connections import *
 
 # Logging Configuration
 logging.basicConfig(
@@ -154,15 +151,16 @@ def main():
                   f"{time.time() - start}")
 
             # Streaming Using MQTT
-            with client.connect(**MQTT_CONNECTION_DETAILS):
-                for deviceid in vehicles_changed:
-                    try:
-                        for entry in device_id_triggers[deviceid]:
-                            env, company_id, vehicle_id = entry
-                            client.publish(f'{env}/gps/{company_id}/{vehicle_id}',
-                                           json.dumps(vehicle_statuses[deviceid]))
-                    except KeyError:
-                        continue
+            client.connect(**MQTT_CONNECTION_DETAILS)
+            for deviceid in vehicles_changed:
+                try:
+                    for entry in device_id_triggers[deviceid]:
+                        env, company_id, vehicle_id = entry
+                        client.publish(f'{env}/gps/{company_id}/{vehicle_id}',
+                                       json.dumps(vehicle_statuses[deviceid]))
+                except KeyError:
+                    continue
+            client.disconnect()
 
             print(f"Batch {batch_index} MQTT Streaming successful")
 
