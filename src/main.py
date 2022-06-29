@@ -22,6 +22,8 @@ logging.basicConfig(
     format='%(asctime)s:%(funcName)s:%(levelname)s:%(message)s'
 )
 
+POSTGRES_RECONNECT_SLEEP_INTERVAL = 10  # Seconds
+REFRESH_INTERVAL = 3600  # Seconds
 BATCH_INTERVAL = 10  # Seconds
 
 
@@ -137,35 +139,53 @@ def process_record(_record: List[Any], _cursor: pg_cursor):
         last_processed_time_stamp = _record[RAW_TIME_INDEX]
 
 
+def postgres_reconnect():
+    while True:
+        try:
+            connection = psycopg2.connect(**POSTGRES_CONNECTION_DETAILS)
+            cursor = connection.cursor()
+            return connection, cursor
+
+        except psycopg2.Error:
+            print("Connection Failed. Trying Reconnect")
+            time.sleep(POSTGRES_RECONNECT_SLEEP_INTERVAL)
+            continue
+
+        except Exception as _e:
+            print(_e)
+            raise _e
+
+
 def main():
     batch_index = 0
+    _con, _cur = postgres_reconnect()
 
     while True:
         start = time.time()
         proceed = True
         try:
             # Processing, inserting to Postgres
-            with psycopg2.connect(**POSTGRES_CONNECTION_DETAILS) as con:
-                with con.cursor() as cur:
-                    if batch_index % 12 == 0:  # Every 1 hour
-                        print("Starting the Hourly Refresh")
-                        refresh_vehicle_statuses(vehicle_statuses, cur)
-                        global last_processed_time_stamp
-                        last_processed_time_stamp = get_last_processed_time_stamp_from_cleaned(cur)
-                        refresh_device_id_triggers(device_id_triggers)
-                        print("Ending the Hourly Refresh\n\n")
+            if batch_index % int(REFRESH_INTERVAL / BATCH_INTERVAL) == 0:
+                print("Starting the Hourly Refresh")
+                refresh_vehicle_statuses(vehicle_statuses, _cur)
+                global last_processed_time_stamp
+                last_processed_time_stamp = get_last_processed_time_stamp_from_cleaned(_cur)
+                refresh_device_id_triggers(device_id_triggers)
+                print("Ending the Hourly Refresh\n\n")
 
-                    print(f"Starting Execution of Batch {batch_index}")
+            print(f"Starting Execution of Batch {batch_index}")
 
-                    # Fetching all the new data
-                    query = f"""
-                            SELECT * FROM {RAW_TABLE_NAME}
-                            WHERE time::timestamp > '{str(last_processed_time_stamp)}'
-                            ORDER BY time::timestamp;
-                        """
-                    cur.execute(query)
-                    for record in cur.fetchall():
-                        process_record(record, cur)
+            # Fetching all the new data
+            query = f"""
+                    SELECT * FROM {RAW_TABLE_NAME}
+                    WHERE time::timestamp > '{str(last_processed_time_stamp)}'
+                    ORDER BY time::timestamp;
+                """
+            _cur.execute(query)
+            num_records = 0
+            for record in _cur.fetchall():
+                num_records += 1
+                process_record(record, _cur)
 
             print(f"Batch {batch_index} postgres insertion successful after " +
                   f"{time.time() - start}")
@@ -186,6 +206,14 @@ def main():
 
             print(f"Batch {batch_index} MQTT Streaming successful")
 
+        except psycopg2.OperationalError as e:
+            try:
+                _cur.close()
+                _con.close()
+            except:
+                pass
+            _con, _cur = postgres_reconnect()
+
         except RefreshError as e:
             print(f"Error While Refreshing some parameter in Batch {batch_index}")
             logging.log(2, e)
@@ -201,6 +229,11 @@ def main():
         except ConnectionRefusedError as e:
             print(f"MQTT Connection Refused at batch {batch_index}")
             logging.log(2, e)
+
+        except KeyboardInterrupt:
+            _cur.close()
+            _con.close()
+            client.disconnect()
 
         except Exception as e:
             print(f"Unexpected Error Executing Batch {batch_index}")
