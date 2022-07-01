@@ -1,4 +1,7 @@
 import paho.mqtt.client as mqtt
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 client = mqtt.Client(client_id="GPS Cleaner")
 
@@ -34,8 +37,8 @@ def on_socket_close(mqttc, userdata, sock):
 
 
 MQTT_CONNECTION_DETAILS = {
-    'host': 'localhost',
-    'port': 5021
+    'host': os.getenv("MQTT_HOST"),
+    'port': os.getenv("MQTT_PORT"),
 }
 
 # client.connect(**MQTT_CONNECTION_DETAILS)

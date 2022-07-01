@@ -7,3 +7,4 @@ paho-mqtt==1.6.1
 psycopg2==2.9.3
 requests==2.27
 urllib3==1.26.9
+python-dotenv==0.20.0

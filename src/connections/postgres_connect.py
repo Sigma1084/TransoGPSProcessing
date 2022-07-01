@@ -1,17 +1,22 @@
-# Ideally Stored in an Environment Variable
-POSTGRES_DBNAME = "shreeji"
-POSTGRES_USER = "ezyloads"
-POSTGRES_PASSWORD = "ezy@1234"
-POSTGRES_HOST = "localhost"
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
-# POSTGRES_CONNECTION_DETAILS = f"dbname={POSTGRES_DBNAME} user={POSTGRES_USER} " + \
-#                               f"password={POSTGRES_PASSWORD} host={POSTGRES_HOST}"
+"""
+This is the main file for the Postgres connection.
+
+Assumes that the following environment variables are set in the environment
+POSTGRES_USER
+POSTGRES_PASSWORD
+POSTGRES_HOST
+POSTGRES_DBNAME
+"""
 
 POSTGRES_CONNECTION_DETAILS = {
-    'dbname': POSTGRES_DBNAME,
-    'user': POSTGRES_USER,
-    'password': POSTGRES_PASSWORD,
-    'host': POSTGRES_HOST
+    'dbname': os.getenv('POSTGRES_DBNAME'),
+    'user': os.getenv('POSTGRES_USER'),
+    'password': os.getenv('POSTGRES_PASSWORD'),
+    'host': os.getenv('POSTGRES_HOST')
 }
 
 RAW_TABLE_NAME = 'shreeji'
