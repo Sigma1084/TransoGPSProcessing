@@ -1,0 +1,16 @@
+{
+  "name": "mqtt",
+  "version": "1.0.0",
+  "description": "A Websocket design for publishing data",
+  "main": "subscribe.js",
+  "scripts": {
+    "subscribe": "node subscribe.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Sumanth NR",
+  "license": "ISC",
+  "dependencies": {
+    "async-mqtt": "^2.6.2",
+    "mqtt": "^4.3.7"
+  }
+}
